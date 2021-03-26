@@ -1,5 +1,5 @@
 // Which type of chip to test, with leading 0 removed (the 0 would indicate an octal number)
-#define CHIP 2
+#define CHIP 00
 // Whether to continue testing if one set of inputs has the wrong output
 #define STOP_AFTER_FAIL true
 
@@ -15,7 +15,7 @@
   // For some reason the NOR pinout is different than the rest of the quad gate chips
   const int outputPins[] = {3, 4, 6, 7, 9, 10, 12, 13};
   const int inputPins[] = {2, 5, 8, 11};
-#elif CHIP == 0 || CHIP == 8 || CHIP == 32
+#elif CHIP == 0 || CHIP == 8 || CHIP == 32 || CHIP == 86
   const int outputPins[] = {2, 3, 5, 6, 8, 9, 11, 12};
   const int inputPins[] = {4, 7, 10, 13};
 #elif CHIP == 4
@@ -77,7 +77,7 @@ int getExpected(int value) {
     return (value == 255) ? 1 : 0;
 
   // Quad gate chips
-  #elif CHIP == 0 || CHIP == 2 || CHIP == 8 || CHIP == 32
+  #elif CHIP == 0 || CHIP == 2 || CHIP == 8 || CHIP == 32 || CHIP == 86
     int result = 0;
     for (int i = 3; i >= 0; i--) {
       bool v1 = value & (1 << (i * 2));
@@ -90,6 +90,8 @@ int getExpected(int value) {
         bool gateResult = v1 && v2;
       #elif CHIP == 32
         bool gateResult = v1 || v2;
+      #elif CHIP == 86
+        bool gateResult = v1 ^ v2;
       #endif
       result = (result << 1) | (gateResult ? 1 : 0);
     }
