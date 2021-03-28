@@ -31,6 +31,11 @@
 #elif CHIP == 157
   const int outputPins[] = {9, 2, 3, 4, 6, 7, 10, 11, 13, A0};
   const int inputPins[] = {5, 8, 12, A1};
+#elif CHIP == 283
+  // A4-1, B4-1, C0
+  const int outputPins[] = {12, 10, 4, 6, 13, 9, 3, 7, 8};
+  // C4, E4-1
+  const int inputPins[] = {A1, A0, 11, 2, 5};
 
 #else
   #error "Invalid CHIP"
@@ -133,6 +138,13 @@ int getExpected(int value) {
   bool v3 = value & (1 << (3 - ab));
   bool v4 = value & (1 << (1 - ab));
   return g ? 0 : (v1 << 3) | (v2 << 2) | (v3 << 1) | v4;
+
+  // 4-bit adder
+  #elif CHIP == 283
+  int a = value >> 5;
+  int b = (value >> 1) & 0b1111;
+  int c = value & 1;
+  return a + b + c;
   
   #else
     #error "Invalid CHIP"
