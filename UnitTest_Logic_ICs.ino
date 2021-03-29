@@ -70,6 +70,15 @@ const int DIP_20[] = {
   int outputPins[] = {1, 2, 9, 10, 7, 15, 14, 13, 12, 11};
   int inputPins[] = {3, 4, 5, 6};
 
+// DIP-20 stateful chips
+#elif CHIP == 245
+  // Not technically stateful, but requires careful ordering of operations to not short pins
+  int outputPins[] = {1, 19};
+  int inputPins[] = {2, 3, 4, 5, 6, 7, 8, 9, 18, 17, 16, 15, 14, 13, 12, 11};
+#elif CHIP == 273
+  int outputPins[] = {3, 4, 7, 8, 13, 14, 17, 18, 1, 11};
+  int inputPins[] = {2, 5, 6, 9, 12, 15, 16, 19};
+
 #else
   #error "Invalid CHIP"
 #endif
@@ -118,6 +127,10 @@ void loop() {
     bool passed = test161();
   #elif CHIP == 173
     bool passed = test173();
+  #elif CHIP == 245
+    bool passed = test245();
+  #elif CHIP == 273
+    bool passed = test273();
   #else
     bool passed = testStateless();
   #endif
@@ -353,13 +366,97 @@ bool test173() {
       digitalWrite(N, LOW);
       result = getInputValues();
       if (result != 0) {
-        sprintf(buf, "Resetting, expected 0 but got 0x%02X", expected, result);
+        sprintf(buf, "Resetting, expected 0 but got 0x%02X", result);
         Serial.println(buf);
         passed = false;
         #if STOP_AFTER_FAIL
           return passed;
         #endif
       }
+    }
+  }
+  return passed;
+}
+
+bool test245() {
+  bool passed = true;
+  char buf[128];
+  
+  const int DIR = outputPins[0]; // Direction
+  const int OE = outputPins[1]; // Output enable
+  for (int value = 0; value < 256; value++) {
+    for (int f = 0; f < 4; f++) {
+      // Reset all A / B pins to inputs before changing direction and OE
+      for (int i = 0; i < inputCount; i++) {
+        pinMode(inputPins[i], INPUT_PULLUP);
+      }
+    
+      bool dir = f & 1;
+      bool oe = f & 2;
+      digitalWrite(DIR, dir);
+      digitalWrite(OE, oe);
+      for (int i = 0; i < 8; i++) {
+        int pin = inputPins[i + (dir ? 0 : 8)];
+        pinMode(pin, OUTPUT);
+        digitalWrite(pin, value & (1 << (7 - i)));
+      }
+      int result = 0;
+      for (int i = 0; i < 8; i++) {
+        int pin = inputPins[i + (dir ? 8 : 0)];
+        result = result | (digitalRead(pin) << (7 - i));
+      }
+      int expected = oe ? 0xFF : value;
+
+      if (result != expected) {
+        sprintf(buf, "With functions 0x%02X, expected 0x%02X but got 0x%02X", f, expected, result);
+        Serial.println(buf);
+        passed = false;
+        #if STOP_AFTER_FAIL
+          return passed;
+        #endif
+      }
+    }
+  }
+  
+  return passed;
+}
+
+bool test273() {
+  bool passed = true;
+  char buf[128];
+  
+  const int MR = outputPins[8]; // Master Reset
+  const int CP = outputPins[9]; // Clock Pulse
+
+  digitalWrite(MR, LOW);
+  digitalWrite(MR, HIGH);
+  for (int value = 0; value < 256; value++) {
+    for (int i = 0; i < 8; i++) {
+      digitalWrite(outputPins[i], value & (1 << (7 - i)));
+    }
+    digitalWrite(CP, HIGH);
+    digitalWrite(CP, LOW);
+    
+    int result = getInputValues();
+    if (result != value) {
+      sprintf(buf, "Set 0x%02X but got 0x%02X", value, result);
+      Serial.println(buf);
+      passed = false;
+      #if STOP_AFTER_FAIL
+        return passed;
+      #endif
+    }
+
+    digitalWrite(MR, LOW);
+    digitalWrite(MR, HIGH);
+    result = getInputValues();
+    if (result != 0) {
+      sprintf(buf, "Resetting, expected 0 but got 0x%02X", result);
+      Serial.println(buf);
+      passed = false;
+      #if STOP_AFTER_FAIL
+        return passed;
+      #endif
     }
   }
   return passed;
